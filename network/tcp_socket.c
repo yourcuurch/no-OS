@@ -48,6 +48,25 @@
 #include "util.h"
 #include "trng.h"
 #include "mbedtls/ssl.h"
+#include "noos_mbedtls_config.h"
+
+/******************************************************************************/
+/********************** Macros and Constants Definitions **********************/
+/******************************************************************************/
+
+#ifdef DISABLE_SECURE_SOCKET
+
+#define CONNECTION_BUFFER_SIZE 500
+
+#else
+
+#ifdef MAX_CONTENT_LEN
+#define CONNECTION_BUFFER_SIZE MAX_CONTENT_LEN
+#else
+#define CONNECTION_BUFFER_SIZE 16384
+#endif /* MAX_CONTENT_LEN */
+
+#endif /* DISABLE_SECURE_SOCKET */
 
 /******************************************************************************/
 /*************************** Types Declarations *******************************/
@@ -221,6 +240,7 @@ int32_t socket_init(struct tcp_socket_desc **desc,
 {
 	struct tcp_socket_desc	*ldesc;
 	int32_t			ret;
+	uint32_t		buff_size;
 
 	if (!desc || !param)
 		return FAILURE;
@@ -231,8 +251,13 @@ int32_t socket_init(struct tcp_socket_desc **desc,
 
 	ldesc->net = param->net;
 
-	ret = ldesc->net->socket_open(ldesc->net->net, &ldesc->id,
-				      PROTOCOL_TCP);
+	if (param->max_buff_size != 0)
+		buff_size = param->max_buff_size;
+	else
+		buff_size = CONNECTION_BUFFER_SIZE;
+
+	ret = ldesc->net->socket_open(ldesc->net->net, &ldesc->id, PROTOCOL_TCP,
+				      buff_size);
 	if (IS_ERR_VALUE(ret)) {
 		free(ldesc);
 		return ret;
